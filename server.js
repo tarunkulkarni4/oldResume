@@ -19,7 +19,7 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 // ⚠️ PASTE YOUR MONGODB INSTANCE URI HERE
 // Example: mongodb+srv://admin:password123@cluster0.abcde.mongodb.net/resume_vault
 // ==========================================
-const MONGODB_URI = "mongodb+srv://kulakarnik273_db_user:ipBtykR7jEYT6rDR@cluster0.g4sbkpe.mongodb.net/resume_vault";
+const MONGODB_URI = process.env.MONGODB_URI;
 
 mongoose.connect(MONGODB_URI)
     .then(() => console.log("✅ Successfully connected to MongoDB Atlas!"))
@@ -46,7 +46,7 @@ const Resume = mongoose.model("Resume", resumeSchema);
 app.get("/resumes", async (req, res) => {
     try {
         const data = await Resume.find().sort({ createdDate: -1 });
-        
+
         // Map the _id format nicely to standard id for our frontend code
         const formattedData = data.map(doc => ({
             id: doc._id.toString(),
@@ -57,7 +57,7 @@ app.get("/resumes", async (req, res) => {
             createdDate: doc.createdDate,
             uploadedDate: doc.uploadedDate
         }));
-        
+
         res.json({ success: true, count: data.length, data: formattedData });
     } catch (error) {
         console.error("GET Error:", error);
