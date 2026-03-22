@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Vault | Node.js Backend</title>
+
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- PDF.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        dark: '#050505',
+                        mongo: '#00ED64', // MongoDB leaf green
+                        mongoDark: '#001e2b' // MongoDB dark brand color
+                    },
+                    keyframes: {
+                        fadeUp: {
+                            '0%': { opacity: '0', transform: 'translateY(24px) scale(0.98)' },
+                            '100%': { opacity: '1', transform: 'translateY(0) scale(1)' }
+                        },
+                        pulse2: {
+                            '0%, 100%': { transform: 'scale(1)', opacity: '1' },
+                            '50%': { transform: 'scale(1.05)', opacity: '0.8' }
+                        },
+                    },
+                    animation: {
+                        fadeUp: 'fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        pulse2: 'pulse2 2.5s infinite ease-in-out',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Ambient bg glow for dark theme only */
+        .dark body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 0%, rgba(0, 237, 100, 0.12) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(0, 30, 43, 0.08) 0%, transparent 40%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px) scale(0.98);
+            transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    </style>
+</head>
+
+<body
+    class="bg-slate-50 text-slate-800 dark:bg-dark dark:text-slate-200 min-h-screen flex flex-col font-sans transition-colors duration-500">
+
+    <!-- Header -->
+    <header
+        class="bg-white/80 dark:bg-dark/70 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 sticky top-0 z-50 transition-colors duration-500">
+        <div class="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between">
+            <h1
+                class="text-2xl font-bold flex items-center gap-3 text-slate-800 dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-r dark:from-white dark:to-mongo dark:drop-shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-colors duration-500">
+                Resume Vault
+            </h1>
+
+            <button id="themeToggle"
+                class="p-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 transition-all duration-300 hover:scale-110 active:scale-95">
+                <!-- Moon icon -->
+                <svg id="moonIcon" class="w-5 h-5 block dark:hidden" xmlns="http://www.w3.org/2000/svg" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+                <!-- Sun icon -->
+                <svg id="sunIcon" class="w-5 h-5 hidden dark:block" xmlns="http://www.w3.org/2000/svg" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Cloud Storage Usage Bar -->
+        <div class="w-full h-1 bg-slate-200 dark:bg-white/5 relative overflow-hidden transition-colors duration-500">
+            <div id="storageFill"
+                class="absolute left-0 top-0 h-full bg-gradient-to-r from-green-500 to-mongo dark:from-green-500 dark:to-mongo transition-all duration-700 w-0 dark:shadow-[0_0_10px_rgba(0,237,100,0.5)]">
+            </div>
+        </div>
+        <div class="max-w-6xl mx-auto px-5 py-1.5 text-right flex justify-between items-center">
+            <span
+                class="text-[10px] font-bold tracking-widest text-green-600 dark:text-mongo uppercase flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-mongo animate-pulse shadow-[0_0_8px_rgba(0,237,100,0.8)]"></span>
+                Node.js Backend Connected
+            </span>
+            <span id="storageLabel"
+                class="text-[11px] text-slate-500 font-medium tracking-wide border px-2 py-0.5 rounded border-slate-200 bg-slate-100 dark:border-white/5 dark:bg-white/5 transition-colors duration-500">Calculating Data...</span>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="w-full max-w-6xl mx-auto px-5 py-6 md:py-10 flex-1 flex flex-col">
+
+        <!-- Upload Dropzone (Reveal Animation #1) -->
+        <section id="dropZone"
+            class="reveal bg-white dark:bg-white/5 border-2 border-dashed border-slate-300 dark:border-white/10 rounded-[20px] md:rounded-[24px] p-6 md:p-14 flex flex-col items-center justify-center text-center mb-6 md:mb-10 cursor-pointer transition-all duration-500 relative overflow-hidden group hover:border-green-400 hover:bg-green-50 dark:hover:border-mongo/50 dark:hover:bg-[#0a1a15] shadow-sm dark:shadow-none dark:hover:shadow-[0_0_40px_rgba(0,237,100,0.15)] hover:scale-[1.01]">
+            <input type="file" id="fileInput" multiple accept=".pdf,.doc,.docx" class="hidden">
+
+            <div
+                class="text-green-500 dark:text-mongo mb-3 md:mb-5 animate-pulse2 group-hover:scale-110 transition-transform duration-500 dark:drop-shadow-[0_0_15px_rgba(0,237,100,0.4)]">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"
+                    class="md:w-[56px] md:h-[56px] stroke-current" viewBox="0 0 24 24" fill="none" stroke-width="1.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+            </div>
+            <h2
+                class="text-lg md:text-2xl font-semibold text-slate-700 dark:text-white mb-1 md:mb-2 tracking-wide transition-colors duration-500">
+                Upload via Local Backend Node</h2>
+            <p
+                class="text-xs md:text-sm text-slate-500 dark:text-slate-400 mb-3 md:mb-4 transition-colors duration-500">
+                Drag and drop files here to upload through localhost:5000 MongoDB proxy</p>
+            <p
+                class="text-[10px] md:text-[11px] font-semibold tracking-wider text-green-700 bg-green-100 border border-green-200 dark:text-mongo dark:bg-mongo/10 dark:border-mongo/20 px-3 md:px-4 py-1 md:py-1.5 rounded-full uppercase transition-colors duration-500">
+                Supports PDF, DOC, DOCX</p>
+
+            <!-- Upload Overlay glow (Dark only) -->
+            <div
+                class="absolute inset-0 pointer-events-none rounded-[24px] bg-[radial-gradient(circle_at_center,rgba(0,237,100,0.15)_0%,transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-500 hidden dark:block">
+            </div>
+            <!-- Ring glow -->
+            <div class="absolute inset-0 pointer-events-none rounded-[24px] transition-all duration-300 ring-0 ring-green-300/50 dark:ring-mongo/30"
+                id="dropGlow"></div>
+            <!-- Loading Overlay -->
+            <div id="loadingOverlay"
+                class="absolute inset-0 bg-white/80 dark:bg-[#050505]/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
+                <div class="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                <p class="mt-3 font-semibold text-green-600 dark:text-mongo text-sm tracking-wide" id="loadingText">
+                    Sending to Node.js Backend...</p>
+            </div>
+        </section>
+
+        <!-- Secure Documents Header -->
+        <div class="flex items-center justify-between w-full mb-6 mt-2 hidden" id="documentsHeader">
+            <h3
+                class="text-xl font-semibold text-slate-800 dark:text-white tracking-wide transition-colors duration-500">
+                MongoDB Documents</h3>
+            <div
+                class="flex items-center gap-2 bg-green-50 dark:bg-mongo/10 border border-green-100 dark:border-mongo/20 px-4 py-1.5 rounded-full dark:shadow-[0_0_15px_rgba(0,237,100,0.1)] transition-colors duration-500">
+                <span
+                    class="w-1.5 h-1.5 rounded-full bg-green-500 dark:bg-mongo animate-pulse transition-colors duration-500"></span>
+                <span
+                    class="text-xs font-semibold text-green-600 dark:text-mongo uppercase tracking-widest transition-colors duration-500"><span
+                        id="docCountText">0</span> total</span>
+            </div>
+        </div>
+
+        <!-- Dynamic Grid Layout -->
+        <div id="resumeGrid"
+            class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5 w-full pb-10">
+            <!-- Cards injected via JS -->
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer
+        class="mt-auto py-8 text-center text-sm text-slate-500 border-t border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-black/30 backdrop-blur-md transition-colors duration-500">
+        <p>Made by <a href="https://github.com/tarunkulkarni4?tab=repositories" target="_blank"
+                class="text-green-500 dark:text-mongo font-semibold transition-all hover:text-green-600 dark:hover:text-[#00c253] dark:hover:drop-shadow-[0_0_10px_rgba(0,237,100,0.5)]">Tarun
+                Kulkarni</a></p>
+    </footer>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed bottom-8 right-8 z-[200] flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- Preview Modal -->
+    <div id="previewModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4 sm:p-6 lg:p-12">
+        <div class="absolute inset-0 bg-slate-900/40 dark:bg-black/80 backdrop-blur-lg transition-opacity duration-400"
+            onclick="closePreview()"></div>
+        <div class="relative w-full h-full max-w-5xl bg-white dark:bg-[#0f0f13] border border-slate-200 dark:border-white/10 rounded-[24px] shadow-2xl dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.8),0_0_0_1px_rgba(255,255,255,0.05)] flex flex-col overflow-hidden pointer-events-auto transition-transform duration-300 scale-95 opacity-0"
+            id="modalBox">
+
+            <button onclick="closePreview()"
+                class="absolute -top-12 right-0 sm:-right-12 text-slate-600 dark:text-white bg-white dark:bg-white/10 hover:bg-slate-100 dark:hover:bg-red-500 hover:text-red-600 dark:hover:text-white hover:border-red-500 border border-slate-300 dark:border-white/20 p-2.5 rounded-full backdrop-blur-md transition-all duration-300 hover:scale-110 hover:rotate-90 z-10 shadow-xl">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+            </button>
+
+            <div
+                class="flex items-center justify-center p-4 border-b border-slate-100 dark:border-white/10 bg-slate-50 dark:bg-black/40 transition-colors duration-500">
+                <h3 id="previewTitle"
+                    class="font-semibold text-slate-800 dark:text-white tracking-wide truncate transition-colors duration-500">
+                    Document Preview</h3>
+            </div>
+            <div id="previewContent"
+                class="flex-1 overflow-hidden relative bg-slate-100 dark:bg-black transition-colors duration-500">
+                <!-- iframe or fallback injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom NodeJS Logic Module -->
+    <script>
+        const API_BASE_URL = "http://localhost:5000";
+
+        // PDF.js worker setup
+        const pdfjsLib = window['pdfjs-dist/build/pdf'];
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+        // Constants & State
+        let resumes = [];
+
+        // DOM Elements
+        const dropZone = document.getElementById('dropZone');
+        const dropGlow = document.getElementById('dropGlow');
+        const fileInput = document.getElementById('fileInput');
+        const resumeGrid = document.getElementById('resumeGrid');
+        const storageFill = document.getElementById('storageFill');
+        const storageLabel = document.getElementById('storageLabel');
+        const toastContainer = document.getElementById('toastContainer');
+        const previewModal = document.getElementById('previewModal');
+        const modalBox = document.getElementById('modalBox');
+        const previewContent = document.getElementById('previewContent');
+        const previewTitle = document.getElementById('previewTitle');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        // Dark/Light Theme Setup
+        const themeToggleBtn = document.getElementById('themeToggle');
+        function setupTheme() {
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+
+            themeToggleBtn.addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+                if (document.documentElement.classList.contains('dark')) {
+                    localStorage.theme = 'dark';
+                } else {
+                    localStorage.theme = 'light';
+                }
+            });
+        }
+
+        // --- Intersection Observer for Scroll Effects ---
+        const observerOptions = { root: null, rootMargin: '0px', threshold: 0.1 };
+        const scrollObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        function triggerReveals() {
+            document.querySelectorAll('.reveal').forEach((el) => {
+                if (!el.classList.contains('active')) scrollObserver.observe(el);
+            });
+        }
+
+        // Initialization
+        async function init() {
+            setupTheme();
+            setupDragAndDrop();
+
+            await loadFromCloud();
+            
+            setTimeout(triggerReveals, 100);
+        }
+
+        // --- Fetch from Backend ---
+        async function loadFromCloud() {
+            try {
+                resumes = [];
+                const response = await fetch(`${API_BASE_URL}/resumes`);
+                
+                if (!response.ok) throw new Error("Backend offline");
+
+                const result = await response.json();
+                
+                if (result.data) {
+                    resumes = result.data;
+                }
+
+                // Calculate visual storage used
+                let total = 0;
+                resumes.forEach(r => total += (r.size || 0));
+                
+                // M0 Free Tier (512MB) Limit math
+                const MONGODB_FREE_TIER = 512 * 1024 * 1024; 
+                const percentage = Math.min((total / MONGODB_FREE_TIER) * 100, 100);
+                storageFill.style.width = percentage + '%';
+                
+                const formatMb = (bytes) => (bytes / (1024 * 1024)).toFixed(1);
+                storageLabel.textContent = formatMb(total) + ' MB synced to Local Backend';
+                
+                renderResumes();
+            } catch (e) {
+                console.error("Failed to load from Local Backend Node", e);
+                resumeGrid.innerHTML =
+                    `<div class="empty-state w-full col-span-full flex flex-col items-center justify-center mt-12 mb-20 h-full animate-float reveal active">
+                        <div class="text-red-500 mb-6 transition-colors duration-500 opacity-80">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" class="stroke-current" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        </div>
+                        <p class="text-[18px] font-bold text-slate-800 dark:text-white mb-2">Node.js Express Server is Offline</p>
+                        <p class="text-sm text-slate-500 dark:text-slate-400 max-w-2xl text-center leading-relaxed">
+                            You must run the backend server first! Open your terminal in this folder and type: <code>node server.js</code> <br>Make sure the backend is running on port 5000 so the frontend can connect to MongoDB.
+                        </p>
+                    </div>`;
+            }
+        }
+
+        // Toggle Loading overlay
+        function setLoading(isLoading) {
+            if (isLoading) {
+                loadingOverlay.classList.remove('opacity-0', 'pointer-events-none');
+            } else {
+                loadingOverlay.classList.add('opacity-0', 'pointer-events-none');
+            }
+        }
+
+        // --- Drag & Drop Setup ---
+        function setupDragAndDrop() {
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            fileInput.addEventListener('change', async (e) => {
+                if (e.target.files.length) await handleFiles(e.target.files);
+                fileInput.value = '';
+            });
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+                dropZone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); });
+            });
+
+            ['dragenter', 'dragover'].forEach(evt => {
+                dropZone.addEventListener(evt, () => {
+                    dropZone.classList.add('scale-[1.01]', 'border-green-400', 'bg-green-50', 'dark:border-mongo/50', 'dark:bg-[#0a1a15]');
+                    dropGlow.classList.add('ring-4', 'ring-green-300/50', 'dark:ring-mongo/30');
+                });
+            });
+
+            ['dragleave', 'drop'].forEach(evt => {
+                dropZone.addEventListener(evt, () => {
+                    dropZone.classList.remove('scale-[1.01]', 'border-green-400', 'bg-green-50', 'dark:border-mongo/50', 'dark:bg-[#0a1a15]');
+                    dropGlow.classList.remove('ring-4', 'ring-green-300/50', 'dark:ring-mongo/30');
+                });
+            });
+
+            dropZone.addEventListener('drop', async (e) => {
+                if (e.dataTransfer.files.length) await handleFiles(e.dataTransfer.files);
+            });
+        }
+
+        // --- File Processing to Local Backend ---
+        async function handleFiles(fileList) {
+            const files = Array.from(fileList);
+            const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+
+            let successCount = 0;
+            setLoading(true);
+
+            for (const file of files) {
+                if (!validTypes.includes(file.type) && !file.name.endsWith('.pdf') && !file.name.endsWith('.doc') && !file.name.endsWith('.docx')) {
+                    showToast('Invalid file: ' + file.name, 'error');
+                    continue;
+                }
+
+                if (file.size > 12 * 1024 * 1024) { 
+                    showToast(file.name + ' is too large! Maximum limit is 12MB', 'error');
+                    continue;
+                }
+
+                try {
+                    let creationDate = null;
+                    const base64Str = await fileToBase64(file);
+
+                    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+                        creationDate = await extractPdfCreationDate(base64Str);
+                    }
+
+                    const fallbackDate = new Date().toISOString();
+                    
+                    const newEntry = {
+                        name: file.name,
+                        type: getFileType(file.name),
+                        size: file.size,
+                        base64: base64Str,
+                        uploadedDate: fallbackDate,
+                        createdDate: creationDate || fallbackDate
+                    };
+
+                    // Execute Fetch request straight to our backend proxy server instead of touching a cloud API natively blockable by CORS
+                    const response = await fetch(`${API_BASE_URL}/upload`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify(newEntry)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Server returned ${response.status}`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    // Give it the MongoDB assigned unique ID
+                    newEntry.id = result.id;
+
+                    resumes.unshift(newEntry);
+                    resumes.sort((a, b) => new Date(b.createdDate) - new Date(a.createdDate));
+
+                    successCount++;
+                } catch (e) {
+                    console.error("Error pushing to Node API", file.name, e);
+                    showToast('Backend Push Failed: ' + file.name, 'error');
+                }
+            }
+
+            setLoading(false);
+
+            if (successCount > 0) {
+                renderResumes();
+                showToast('Sent ' + successCount + ' resume(s) directly to DB', 'success');
+            }
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function extractPdfCreationDate(base64Str) {
+            try {
+                const base64Data = base64Str.split(',')[1];
+                const binaryString = window.atob(base64Data);
+                const len = binaryString.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+
+                const loadingTask = pdfjsLib.getDocument({ data: bytes });
+                const pdfDocument = await loadingTask.promise;
+                const metadata = await pdfDocument.getMetadata();
+
+                if (metadata && metadata.info && metadata.info.CreationDate) {
+                    const dateStr = metadata.info.CreationDate;
+                    return parsePdfDate(dateStr) || null;
+                }
+            } catch (e) {
+                console.warn("Could not extract PDF metadata", e);
+            }
+            return null;
+        }
+
+        function parsePdfDate(pdfDate) {
+            if (!pdfDate.startsWith('D:')) return null;
+            const year = pdfDate.substring(2, 6);
+            const month = pdfDate.substring(6, 8);
+            const day = pdfDate.substring(8, 10);
+            const hour = pdfDate.substring(10, 12) || "00";
+            const min = pdfDate.substring(12, 14) || "00";
+            const sec = pdfDate.substring(14, 16) || "00";
+
+            if (year && month && day) {
+                return new Date(year + '-' + month + '-' + day + 'T' + hour + ':' + min + ':' + sec + 'Z').toISOString();
+            }
+            return null;
+        }
+
+        // --- Data Helpers ---
+        function getFileType(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            if (ext === 'pdf') return 'PDF';
+            if (ext === 'doc') return 'DOC';
+            if (ext === 'docx') return 'DOCX';
+            return 'FILE';
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024, sizes = ['B', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function formatDateDisplay(isoString, type) {
+            const d = new Date(isoString);
+            const datePart = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+            let hours = d.getHours();
+            const minutes = d.getMinutes().toString().padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            const timePart = hours + ':' + minutes + ' ' + ampm;
+
+            const combined = datePart + ', ' + timePart;
+            return type === 'PDF' ? 'Created: ' + combined : 'Uploaded: ' + combined;
+        }
+
+        function getTypeColorConfig(type) {
+            if (type === 'PDF') return 'text-red-600 bg-red-100 border-red-200 dark:text-red-400 dark:bg-red-500/10 dark:border-red-500/20';
+            if (type === 'DOCX') return 'text-green-600 bg-green-100 border-green-200 dark:text-mongo dark:bg-mongo/10 dark:border-mongo/20';
+            if (type === 'DOC') return 'text-blue-600 bg-blue-100 border-blue-200 dark:text-blue-400 dark:bg-blue-500/10 dark:border-blue-500/20';
+            return 'text-slate-600 bg-slate-100 border-slate-200 dark:text-slate-400 dark:bg-white/5 dark:border-white/10';
+        }
+
+        // --- Rendering ---
+        function updateBadgeCount() {
+            const newCount = resumes.length;
+            const headerToggle = document.getElementById('documentsHeader');
+            const innerCount = document.getElementById('docCountText');
+            if (headerToggle && innerCount) {
+                innerCount.textContent = newCount;
+                if (newCount > 0) {
+                    headerToggle.classList.remove('hidden');
+                    headerToggle.classList.add('flex');
+                } else {
+                    headerToggle.classList.remove('flex');
+                    headerToggle.classList.add('hidden');
+                }
+            }
+        }
+
+        function renderResumes() {
+            updateBadgeCount();
+
+            if (resumes.length === 0) {
+                resumeGrid.className = 'w-full flex-1 flex flex-col items-center justify-center transition-all duration-500';
+                resumeGrid.innerHTML =
+                    '<div class="empty-state flex flex-col items-center justify-center mt-12 mb-20 h-full animate-float reveal active">' +
+                    '<div class="text-slate-300 dark:text-slate-600 dark:drop-shadow-[0_0_20px_rgba(255,255,255,0.05)] mb-6 transition-colors duration-500">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" class="stroke-current opacity-50 dark:opacity-30" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/><\/svg>' +
+                    '<\/div>' +
+                    '<p class="text-[15px] tracking-wide font-medium text-slate-500 dark:text-slate-400 transition-colors duration-500">Vault is empty.<\/p>' +
+                    '<p class="text-xs text-slate-400 dark:text-slate-500 mt-2 tracking-wider uppercase transition-colors duration-500">No documents found in backend<\/p>' +
+                    '<\/div>';
+                return;
+            }
+
+            resumeGrid.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5 w-full pb-8 transition-all duration-500';
+            resumeGrid.innerHTML = '';
+
+            resumes.forEach((resume, index) => {
+                const badgeStyle = getTypeColorConfig(resume.type);
+
+                const card = document.createElement('div');
+                card.className = "reveal bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 backdrop-blur-xl rounded-[18px] p-4 flex flex-col gap-3 transition-all duration-400 hover:border-green-300 dark:hover:border-mongo/40 hover:-translate-y-1 hover:shadow-xl dark:hover:shadow-[0_8px_32px_rgba(0,237,100,0.15)] group";
+
+                card.style.transitionDelay = (index * 0.05) + 's';
+
+                card.innerHTML =
+                    '<!-- Top row: Badge -->' +
+                    '<div class="flex items-center justify-between">' +
+                    '<span class="text-[10px] font-bold px-2 py-0.5 rounded border ' + badgeStyle + ' uppercase tracking-widest transition-colors duration-500">' + resume.type + '<\/span>' +
+                    '<\/div>' +
+
+                    '<!-- File Info -->' +
+                    '<div class="flex-1 flex flex-col justify-center min-w-0 mt-1">' +
+                    '<h3 class="font-semibold text-slate-800 dark:text-white text-[15px] truncate tracking-wide transition-colors duration-500" title="' + resume.name + '">' + resume.name + '<\/h3>' +
+                    '<div class="flex flex-col gap-0.5 mt-1.5">' +
+                    '<span class="text-[11px] text-slate-500 dark:text-slate-400 font-medium transition-colors duration-500">' + formatDateDisplay(resume.createdDate, resume.type) + '<\/span>' +
+                    '<span class="text-[11px] text-slate-400 dark:text-slate-500 font-medium tracking-wide transition-colors duration-500">' + formatBytes(resume.size) + '<\/span>' +
+                    '<\/div>' +
+                    '<\/div>' +
+
+                    '<!-- Actions -->' +
+                    '<div class="flex items-center gap-2 mt-2 pt-3 border-t border-slate-100 dark:border-white/5 transition-colors duration-500">' +
+                    '<button onclick="window.previewResume(\'' + resume.id + '\')" title="Preview directly from Buffer" class="flex-1 flex justify-center items-center py-2 bg-slate-50 text-slate-500 dark:bg-white/5 border border-slate-200 dark:border-white/5 dark:text-slate-300 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-700 dark:hover:text-white dark:hover:border-white/20 hover:scale-[1.03] active:scale-95 transition-all duration-200">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" class="stroke-current" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><\/svg>' +
+                    '<\/button>' +
+                    '<a href="' + resume.base64 + '" download="' + resume.name + '" title="Download" class="flex-1 flex justify-center items-center py-2 bg-green-600 text-white dark:bg-gradient-to-r dark:from-green-500 dark:to-mongo rounded-full hover:bg-green-700 dark:hover:from-green-400 dark:hover:to-[#00c253] shadow-sm dark:shadow-[0_0_15px_rgba(0,237,100,0.2)] dark:hover:shadow-[0_4px_20px_rgba(0,237,100,0.4)] hover:scale-[1.03] active:scale-95 transition-all duration-200">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" class="stroke-current" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/><\/svg>' +
+                    '<\/a>' +
+                    '<button onclick="window.deleteResume(\'' + resume.id + '\')" title="Erase Document permanently" class="flex-1 flex justify-center items-center py-2 bg-red-50 text-red-500 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 dark:text-red-400 rounded-full hover:bg-red-100 dark:hover:bg-red-500/20 dark:hover:text-red-300 dark:hover:border-red-500/40 hover:scale-[1.03] active:scale-95 shadow-sm dark:shadow-[0_0_10px_rgba(239,68,68,0)] dark:hover:shadow-[0_0_15px_rgba(239,68,68,0.2)] transition-all duration-200">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" class="stroke-current" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/><\/svg>' +
+                    '<\/button>' +
+                    '<\/div>';
+                resumeGrid.appendChild(card);
+            });
+
+            setTimeout(triggerReveals, 100);
+        }
+
+        // --- Window-scoped Actions ---
+        window.deleteResume = async function (id) {
+            if (confirm("Delete this entirely from the Backend API?")) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/resumes/${id}`, { method: "DELETE" });
+                    
+                    if (!response.ok) throw new Error("Delete request failed");
+
+                    resumes = resumes.filter(r => r.id !== id);
+                    renderResumes();
+                    showToast("Document deleted successfully from Backend server.", "error"); 
+                } catch (e) {
+                    console.error("Deletion error", e);
+                    showToast("Failed to delete record.", "error");
+                }
+            }
+        }
+
+        window.previewResume = function (id) {
+            const resume = resumes.find(r => r.id === id);
+            if (!resume) return;
+
+            previewTitle.textContent = resume.name;
+            previewModal.classList.remove('hidden');
+            previewModal.classList.add('flex');
+
+            setTimeout(() => {
+                modalBox.classList.remove('scale-95', 'opacity-0');
+                modalBox.classList.add('scale-100', 'opacity-100');
+            }, 10);
+
+            document.body.style.overflow = 'hidden';
+
+            if (resume.type === 'PDF') {
+                previewContent.innerHTML = '<iframe src="' + resume.base64 + '#toolbar=0" class="w-full h-full border-none bg-white"><\/iframe>';
+            } else {
+                previewContent.innerHTML =
+                    '<div class="h-full flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-dark gap-5 p-6 text-center transition-colors duration-500">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="70" height="70" viewBox="0 0 24 24" fill="none" class="stroke-current opacity-40 dark:opacity-20 transition-opacity duration-500" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/><\/svg>' +
+                    '<p class="font-semibold text-lg text-slate-700 dark:text-slate-300 transition-colors duration-500">Preview block natively<\/p>' +
+                    '<p class="text-xs text-slate-500 max-w-sm transition-colors duration-500">Click below to securely access the file natively from its downloaded string.<\/p>' +
+                    '<a href="' + resume.base64 + '" download="' + resume.name + '" class="mt-4 px-8 py-2.5 bg-green-600 dark:bg-gradient-to-r dark:from-green-500 dark:to-mongo text-white font-medium rounded-full hover:bg-green-700 dark:hover:from-green-400 dark:hover:to-[#00c253] shadow-md dark:shadow-none hover:shadow-lg dark:hover:shadow-[0_4px_20px_rgba(0,237,100,0.3)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 tracking-wide">Download Document<\/a>' +
+                    '<\/div>';
+            }
+        }
+
+        window.closePreview = function () {
+            modalBox.classList.remove('scale-100', 'opacity-100');
+            modalBox.classList.add('scale-95', 'opacity-0');
+
+            setTimeout(() => {
+                previewModal.classList.remove('flex');
+                previewModal.classList.add('hidden');
+                document.body.style.overflow = '';
+                previewContent.innerHTML = '';
+            }, 300); 
+        }
+
+        // --- Toasts ---
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+
+            const isError = type === 'error';
+            const bgColorLight = isError ? 'bg-red-50 border-red-200 shadow-md flex-shrink-0' : 'bg-green-50 border-green-200 shadow-md flex-shrink-0';
+            const bgColorDark = isError ? 'dark:bg-red-500/20 dark:border-red-500/30 dark:shadow-[0_10px_30px_rgba(239,68,68,0.2)]' : 'dark:bg-green-500/20 dark:border-mongo/30 dark:shadow-[0_10px_30px_rgba(0,237,100,0.2)]';
+            const textColorLight = isError ? 'text-red-600' : 'text-green-600';
+            const textColorDark = isError ? 'dark:text-red-300' : 'dark:text-mongo';
+            const iconLight = isError
+                ? '<svg class="w-4 h-4 text-red-600 dark:text-red-400 transition-colors duration-500 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /><\/svg>'
+                : '<svg class="w-4 h-4 text-green-600 dark:text-mongo transition-colors duration-500 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /><\/svg>';
+
+            toast.className = `flex items-center gap-3 px-5 py-3.5 rounded-[16px] border animate-slideDown pointer-events-auto min-w-[220px] transition-colors duration-500 \${bgColorLight} \${bgColorDark} \${textColorLight} \${textColorDark}`;
+
+            toast.innerHTML =
+                iconLight +
+                '<span class="text-sm font-semibold tracking-wide">' + message + '<\/span>';
+
+            toastContainer.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.replace('animate-slideDown', 'opacity-0');
+                toast.classList.add('transition-opacity', 'duration-300', 'translate-y-4');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !previewModal.classList.contains('hidden')) {
+                window.closePreview();
+            }
+        });
+    </script>
+</body>
+</html>
